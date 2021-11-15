@@ -78,6 +78,24 @@ def getContours(img, drawImg):
 def empty(arg):
     pass
 
+def openImage(file, path=".\\resources\\dices\\"):
+    path = os.path.normpath(path)
+    if(not os.path.isdir(path)):
+        print("no directory: " + path)
+        exit(1)
+
+    path = os.path.join(path, file)
+    if(not os.path.isfile(path)):
+        print("no file: " + file + "\nat: " + path)
+        exit(1)
+
+    try:
+        img = cv.imread(path)
+    except:
+        print("can't open file: " + path)
+        exit(1)
+    return img
+
 min_threshold = 1
 max_threshold = 200
 min_area = 1
@@ -97,8 +115,7 @@ cv.createTrackbar("Canny thresh1", windowTrackBars, 1, 255, empty)
 cv.createTrackbar("Canny thresh2", windowTrackBars, 255, 255, empty)
 
 while True:
-    path = directory + "dice6.jpg"
-    img = cv.imread(path)
+    img = openImage('dice3.jpg')
     blank = np.zeros_like(img)
 
     gaussSigmaX = cv.getTrackbarPos("Gauss sigma x", windowTrackBars)
@@ -143,11 +160,10 @@ while True:
 
         newImages.append(im_with_keypoints)
 
-    #joined = joinImages(0.35, [[img, imgGray, imgBlur], [imgThreshold, imgCanny, blank],
-        #[resultImage, blank, blank]], False)
-    #cv.imshow("images", joined)
-
-    joined = joinImages(0.8, newImages, True)
+    joined = joinImages(0.35, [[img, imgGray, imgBlur], [imgThreshold, imgCanny, resultImage]], False)
     cv.imshow("images", joined)
+
+    #joined = joinImages(0.8, newImages, True)
+    #cv.imshow("images", joined)
 
     cv.waitKey(1)
