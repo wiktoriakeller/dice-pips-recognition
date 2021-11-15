@@ -126,8 +126,18 @@ while True:
 
     imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     imgBlur = cv.GaussianBlur(imgGray, (5, 5), gaussSigmaX)
-    threshold = cv.threshold(imgGray, threshMin, threshMax, cv.THRESH_BINARY)
+
+    #automatic image thresholding - THRESH_OTSU / THRESH_TRIANGLE
+    threshold = cv.threshold(imgGray, threshMin, threshMax, cv.THRESH_BINARY | cv.THRESH_OTSU) 
     imgThreshold = threshold[1]
+
+    #Closing and opening
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
+    imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
+    imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_OPEN, kernel)
+
+
+
     imgCanny = cv.Canny(imgThreshold, cannyThresh1, cannyThresh2)
     closing = cv.morphologyEx(imgCanny, cv.MORPH_CLOSE, (5, 5), iterations=5)
     closing = cv.dilate(imgCanny, (5,5), iterations=4)
