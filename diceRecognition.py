@@ -2,10 +2,6 @@ import cv2 as cv
 import numpy as np
 import os
 
-def resizeToImage(img1, img2):
-    image = cv.resize(img1, (img2.shape[1], img2.shape[0]), None, 1, 1)
-    return image
-
 def resize(sample, image, scale):
     #check whether sample image and target image have the same dimensions
     if image.shape[:2] == sample.shape[:2]:
@@ -78,8 +74,10 @@ def getContours(img, drawImg):
 def empty(arg):
     pass
 
-def openImage(file, path=".\\resources\\dices\\"):
+def openImage(file):
+    path = os.path.dirname(__file__) + "\\resources\\dices\\"
     path = os.path.normpath(path)
+
     if(not os.path.isdir(path)):
         print("no directory: " + path)
         exit(1)
@@ -92,8 +90,9 @@ def openImage(file, path=".\\resources\\dices\\"):
     try:
         img = cv.imread(path)
     except:
-        print("can't open file: " + path)
+        print("Can't open file: " + path)
         exit(1)
+
     return img
 
 min_threshold = 1
@@ -102,25 +101,19 @@ min_area = 1
 min_circularity = 1
 min_inertia_ratio = 1
 
-directory = os.path.dirname(__file__) + "\\resources\\dices\\"
-
 windowTrackBars = "TrackBars"
 cv.namedWindow(windowTrackBars)
-cv.resizeWindow(windowTrackBars, 640, 240)
+cv.resizeWindow(windowTrackBars, 640, 120)
 
 cv.createTrackbar("Gauss sigma x", windowTrackBars, 10, 50, empty)
-cv.createTrackbar("Thresh min", windowTrackBars, 149, 255, empty)
-cv.createTrackbar("Thresh max", windowTrackBars, 255, 255, empty)
 cv.createTrackbar("Canny thresh1", windowTrackBars, 1, 255, empty)
 cv.createTrackbar("Canny thresh2", windowTrackBars, 255, 255, empty)
 
 while True:
-    img = openImage('dice3.jpg')
+    img = openImage("dice1.png")
     blank = np.zeros_like(img)
 
     gaussSigmaX = cv.getTrackbarPos("Gauss sigma x", windowTrackBars)
-    threshMin = cv.getTrackbarPos("Thresh min", windowTrackBars)
-    threshMax = cv.getTrackbarPos("Thresh max", windowTrackBars)
     cannyThresh1 = cv.getTrackbarPos("Canny thresh1", windowTrackBars)
     cannyThresh2 = cv.getTrackbarPos("Canny thresh2", windowTrackBars)
 
@@ -128,15 +121,13 @@ while True:
     imgBlur = cv.GaussianBlur(imgGray, (5, 5), gaussSigmaX)
 
     #automatic image thresholding - THRESH_OTSU / THRESH_TRIANGLE
-    threshold = cv.threshold(imgGray, threshMin, threshMax, cv.THRESH_BINARY | cv.THRESH_OTSU) 
+    threshold = cv.threshold(imgGray, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU) 
     imgThreshold = threshold[1]
 
     #Closing and opening
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
     imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
     imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_OPEN, kernel)
-
-
 
     imgCanny = cv.Canny(imgThreshold, cannyThresh1, cannyThresh2)
     closing = cv.morphologyEx(imgCanny, cv.MORPH_CLOSE, (5, 5), iterations=5)
