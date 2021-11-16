@@ -2,9 +2,11 @@ import cv2 as cv
 import numpy as np
 import os 
 
+def resizeToSize(img, size):
+    return cv.resize(img, (size, size))
+
 def resizeToImage(img1, img2):
-    image = cv.resize(img1, (img2.shape[1], img2.shape[0]), None, 1, 1)
-    return image
+    return cv.resize(img1, (img2.shape[1], img2.shape[0]), None, 1, 1)
 
 def resize(sample, image, scale):
     #check whether sample image and target image have the same dimensions
@@ -92,90 +94,82 @@ def openImage(file):
 
     return img
 
+def findContoursInDice(img):
+    diceImgGray = cv.cvtColor(dices[i], cv.COLOR_BGR2GRAY)
+
+    diceImgBlur = cv.GaussianBlur(diceImgGray, (3, 3), 50, 50)
+    diceThreshold = cv.threshold(diceImgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU) 
+    diceImgThreshold = diceThreshold[1]
+
+    diceImgCanny = cv.Canny(diceImgThreshold, 20, 255)
+    contours, hierarchy = cv.findContours(diceImgCanny, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    return contours
+    
+def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio):
+    diceImgGray = cv.cvtColor(dices[i], cv.COLOR_BGR2GRAY)
+    
+    params = cv.SimpleBlobDetector_Params()  
+    params.filterByArea = True
+    params.filterByCircularity = True
+    params.filterByInertia = True
+    params.minThreshold = minThreshold
+    params.maxThreshold = maxThreshold
+    params.minArea = minArea
+    params.maxArea = maxArea
+    params.minCircularity = minCircularity
+    params.minInertiaRatio = minInertiaRatio
+    detector = cv.SimpleBlobDetector_create(params)
+
+    keypoints = detector.detect(diceImgGray)
+    invImage = cv.bitwise_not(diceImgGray)
+    keypoints2 = detector.detect(invImage)
+    return cv.drawKeypoints(img, keypoints + keypoints2, np.array([]), (255, 0, 0),
+                cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+#blob detection parameters
 minThreshold = 50                  
 maxThreshold = 200     
-minArea = 100                
+minArea = 60                
 maxArea = 1000
 minCircularity = 0.4
 minInertiaRatio = 0.4
 
-#windowTrackBars = "TrackBars"
-#cv.namedWindow(windowTrackBars)
-#cv.resizeWindow(windowTrackBars, 640, 200)
+img = openImage("dice1.jpg")
+blank = np.zeros_like(img)
 
-#cv.createTrackbar("Min threshold", windowTrackBars, 50, 255, empty)
-#cv.createTrackbar("Max threshold", windowTrackBars, 200, 255, empty)
-#cv.createTrackbar("Min area", windowTrackBars, 20, 1000, empty)
-#cv.createTrackbar("Max area", windowTrackBars, 1000, 1500, empty)
+imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+imgBlur = cv.GaussianBlur(imgGray, (3, 3), 10)
 
-while True:
-    img = openImage("dice2.jpg")
-    blank = np.zeros_like(img)
+threshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU) 
+imgThreshold = threshold[1]
 
-    #minTh = cv.getTrackbarPos("Min threshold", windowTrackBars)
-    #maxTh = cv.getTrackbarPos("Max threshold", windowTrackBars)
-    #minArea = cv.getTrackbarPos("Min area", windowTrackBars)
-    #maxArea = cv.getTrackbarPos("Max area", windowTrackBars)
+kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
+imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
+imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_OPEN, kernel)
 
-    imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    imgBlur = cv.GaussianBlur(imgGray, (3, 3), 10)
+imgCanny = cv.Canny(imgThreshold, 1, 255)
+resultImage = np.copy(img)
 
-    threshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU) 
-    imgThreshold = threshold[1]
+dices = getContours(imgCanny, resultImage)
 
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-    imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
-    imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_OPEN, kernel)
+cv.putText(resultImage, "Number of dices: " + str(len(dices)), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+filteredDices = []
 
-    imgCanny = cv.Canny(imgThreshold, 1, 255)
-    resultImage = np.copy(img)
-
-    dices = getContours(imgCanny, resultImage)
+for i in range(len(dices)):
+    dices[i] = resizeToSize(dices[i], 128)
     
-    cv.putText(resultImage, "Number of dices: " + str(len(dices)), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-    filteredDices = []
+imgArea = dices[0].shape[0] * dices[0].shape[1]
+maxArea = int(imgArea / 2)
 
-    for i in range(len(dices)):
-        dices[i] = resizeToImage(dices[i], dices[0])
-    imgArea = dices[0].shape[0] * dices[0].shape[1]
+for i in range(len(dices)):
+    imgWithKeypoints = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
+    filteredDices.append(imgWithKeypoints)
 
-    for i in range(len(dices)):
-        diceImgGray = cv.cvtColor(dices[i], cv.COLOR_BGR2GRAY)
+joined = joinImages(0.4, [[img, imgBlur, imgThreshold], [imgCanny, resultImage, blank]], False)
+cv.imshow("images", joined)
 
-        diceImgBlur = cv.GaussianBlur(diceImgGray, (3, 3), 50, 50)
-        diceThreshold = cv.threshold(diceImgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU) 
-        diceImgThreshold = diceThreshold[1]
+joined = joinImages(0.5, filteredDices, True)
+cv.imshow("pits", joined)
 
-        diceImgCanny = cv.Canny(diceImgThreshold, 20, 255)
-        dilated = cv.dilate(diceImgCanny, (3,3), iterations=1)
-        contours, hierarchy = cv.findContours(diceImgCanny, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-        
-        areas = [cv.contourArea(cnt) for cnt in contours]
-        avgArea = np.average(areas)
-        
-        params = cv.SimpleBlobDetector_Params()  
-        params.filterByArea = True
-        params.filterByCircularity = True
-        params.filterByInertia = True
-        params.minThreshold = minThreshold
-        params.maxThreshold = maxThreshold
-        params.minArea = int(avgArea)
-        params.maxArea = int(imgArea / 2)
-        params.minCircularity = minCircularity
-        params.minInertiaRatio = minInertiaRatio
-        detector = cv.SimpleBlobDetector_create(params)
-
-        keypoints = detector.detect(diceImgGray)
-        invImage = cv.bitwise_not(diceImgGray)
-        keypoints2 = detector.detect(invImage)
-        imgWithKeypoints = cv.drawKeypoints(dices[i], keypoints + keypoints2, np.array([]), (255, 0, 0),
-                                              cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        filteredDices.append(imgWithKeypoints)
-
-    joined = joinImages(0.4, [[img, imgBlur, imgThreshold], [imgCanny, resultImage, blank]], False)
-    cv.imshow("images", joined)
-
-    joined = joinImages(0.65, filteredDices, True)
-    cv.imshow("pits", joined)
-
-    cv.waitKey(15)
+cv.waitKey(0)
+cv.destroyAllWindows()
