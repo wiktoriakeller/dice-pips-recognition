@@ -121,10 +121,11 @@ def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCi
     detector = cv.SimpleBlobDetector_create(params)
 
     keypoints = detector.detect(diceImgGray)
-    invImage = cv.bitwise_not(diceImgGray)
-    keypoints2 = detector.detect(invImage)
-    return cv.drawKeypoints(img, keypoints + keypoints2, np.array([]), (255, 0, 0),
-                cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+    #invImage = cv.bitwise_not(diceImgGray)
+    #keypoints2 = detector.detect(invImage) + keypoints
+    return cv.drawKeypoints(img, keypoints, np.array([]), (0, 0, 255),
+                cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), len(keypoints)
 
 #blob detection parameters
 minThreshold = 50                  
@@ -162,7 +163,8 @@ imgArea = dices[0].shape[0] * dices[0].shape[1]
 maxArea = int(imgArea / 2)
 
 for i in range(len(dices)):
-    imgWithKeypoints = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
+    imgWithKeypoints, number = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
+    cv.putText(imgWithKeypoints, str(number), (5, 25), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
     filteredDices.append(imgWithKeypoints)
 
 joined = joinImages(0.4, [[img, imgBlur, imgThreshold], [imgCanny, resultImage, blank]], False)
