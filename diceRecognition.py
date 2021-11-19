@@ -1,3 +1,4 @@
+from functools import total_ordering
 import cv2 as cv
 import numpy as np
 import os 
@@ -48,6 +49,7 @@ def joinImages(scale, images, oneDimArr = True):
 def getContours(img, drawImg):
     contours, hierarchy = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     dices = []
+    positions = []
     imageForCropping = np.copy(drawImg)
 
     for cnt in contours:
@@ -57,6 +59,7 @@ def getContours(img, drawImg):
             rect = cv.minAreaRect(cnt)
             box = cv.boxPoints(rect)
             box = np.int0(box)
+            positions.append((box[0][0], box[0][1]))
             cv.drawContours(drawImg, [box], 0, (0, 255, 0), 2)
 
             width = int(rect[1][0])
@@ -68,13 +71,13 @@ def getContours(img, drawImg):
             warped = cv.warpPerspective(imageForCropping, M, (width, height))
             dices.append(warped)
 
-    return dices
+    return dices, positions
             
 def empty(arg):
     pass
 
 def openImage(file):
-    path = os.path.dirname(__file__) + "\\resources\\dices\\"
+    path = os.path.dirname(__file__) + "\\resources\\dices"
     path = os.path.normpath(path)
 
     if(not os.path.isdir(path)):
@@ -105,7 +108,7 @@ def findContoursInDice(img):
     return contours
     
 def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio):
-    diceImgGray = cv.cvtColor(dices[i], cv.COLOR_BGR2GRAY)
+    diceImgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     
     params = cv.SimpleBlobDetector_Params()  
     params.filterByArea = True
@@ -129,6 +132,7 @@ def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCi
 def deleteGlares(img):
     pass
 
+
 #blob detection parameters
 minThreshold = 50                  
 maxThreshold = 200     
@@ -137,56 +141,65 @@ maxArea = 1000
 minCircularity = 0.4
 minInertiaRatio = 0.4
 
-img = openImage("dice1.jpg")
-blank = np.zeros_like(img)
+totalPips = 0
 
-imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-imgBlur = cv.GaussianBlur(imgGray, (3, 3), 10)
+def recognize(fileName):
+    img = openImage(fileName)
+    totalPips = 0
+    imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    imgBlur = cv.GaussianBlur(imgGray, (3, 3), 10)
 
-imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
+    imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
 
-kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
-imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_OPEN, kernel)
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
+    imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
+    imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_OPEN, kernel)
 
-imgCanny = cv.Canny(imgThreshold, 1, 255)
-resultImage = np.copy(img)
+    imgCanny = cv.Canny(imgThreshold, 1, 255)
+    resultImage = np.copy(img)
 
-dices = getContours(imgCanny, resultImage)
+    dices, positions = getContours(imgCanny, resultImage)
 
-cv.putText(resultImage, "Number of dices: " + str(len(dices)), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-filteredDices = []
+    cv.putText(resultImage, "Number of dices: " + str(len(dices)), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+    filteredDices = []
 
-for i in range(len(dices)):
-    dices[i] = resizeToSize(dices[i], 128)
+    for i in range(len(dices)):
+        dices[i] = resizeToSize(dices[i], 128)
+
+    imgArea = dices[0].shape[0] * dices[0].shape[1]
+    maxArea = int(imgArea / 2)
+
+    for i in range(len(dices)):
+        blur = cv.medianBlur(dices[i], 5)
+        hsv = cv.cvtColor(blur, cv.COLOR_BGR2HSV)
+        lowerGray = np.array([0, 5, 50], np.uint8)
+        upperGray = np.array([179, 50, 255], np.uint8)
+        maskGray = cv.inRange(hsv, lowerGray, upperGray)
+        mean = np.mean(maskGray)
+
+        for j in range(maskGray.shape[0]):
+            for g in range(maskGray.shape[1]):
+                if(maskGray[j][g] >= 220 and mean <= 30):
+                    dices[i][j][g][0] = 0
+                    dices[i][j][g][1] = 0
+                    dices[i][j][g][2] = 0
+
+        imgWithKeypoints, number = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
+        cv.putText(imgWithKeypoints, str(number), (5, 25), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+
+        cv.putText(resultImage, str(number), positions[i], cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+        filteredDices.append(imgWithKeypoints)
+        totalPips += number
     
-imgArea = dices[0].shape[0] * dices[0].shape[1]
-maxArea = int(imgArea / 2)
+    print("File: " + fileName)
+    print("Total pips found: " + str(totalPips))
+    print("")
 
-for i in range(len(dices)):
-    blur = cv.medianBlur(dices[i], 5)
-    hsv = cv.cvtColor(blur, cv.COLOR_BGR2HSV)
-    lowerGray = np.array([0, 5, 50], np.uint8)
-    upperGray = np.array([179, 50, 255], np.uint8)
-    maskGray = cv.inRange(hsv, lowerGray, upperGray)
-    mean = np.mean(maskGray)
+    full = joinImages(0.8, [img, resultImage], True)
+    #cv.imshow("images", joined)
 
-    for j in range(maskGray.shape[0]):
-        for g in range(maskGray.shape[1]):
-            if(maskGray[j][g] >= 220 and mean <= 30):
-                dices[i][j][g][0] = 0
-                dices[i][j][g][1] = 0
-                dices[i][j][g][2] = 0
+    dices = joinImages(0.5, filteredDices, True)
+    #cv.imshow("pits", joined)
+    return full, dices
 
-    imgWithKeypoints, number = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
-    cv.putText(imgWithKeypoints, str(number), (5, 25), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-    filteredDices.append(imgWithKeypoints)
 
-joined = joinImages(0.4, [[img, imgBlur, imgThreshold], [imgCanny, resultImage, blank]], False)
-cv.imshow("images", joined)
-
-joined = joinImages(0.5, filteredDices, True)
-cv.imshow("pits", joined)
-
-cv.waitKey(0)
-cv.destroyAllWindows()
