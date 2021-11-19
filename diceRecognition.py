@@ -98,7 +98,7 @@ def openImage(file):
     return img
 
 def findContoursInDice(img):
-    diceImgGray = cv.cvtColor(dices[i], cv.COLOR_BGR2GRAY)
+    diceImgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     diceImgBlur = cv.GaussianBlur(diceImgGray, (3, 3), 50, 50)
     diceImgThreshold = cv.threshold(diceImgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
