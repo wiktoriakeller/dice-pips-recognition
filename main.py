@@ -12,9 +12,16 @@ def getFiles(path, ext=['.jpg', '.png', '.jpeg']):
 if __name__ == "__main__":
     files = getFiles(os.path.dirname(__file__) + "\\resources\\dices")
 
-    for file in files:
-        full, dices = diceRecognition.recognize(file)
-        cv.imshow("dice", full)
+    i = 0
+    while True:
+        full, dices = diceRecognition.recognize(files[i])
+        cv.imshow(files[i], full)
         cv.imshow("pits", dices)
-        cv.waitKey(0)
+        key = cv.waitKey(0)
+        if chr(key%256) == 'q':
+            break
+        elif chr(key%256) == 'a':
+            i -= 1
+        else:
+            i += 1
         cv.destroyAllWindows()
