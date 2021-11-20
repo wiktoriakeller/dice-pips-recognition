@@ -25,10 +25,10 @@ if __name__ == "__main__":
         cv.imshow("dice", full)
         cv.imshow("pits", dices)
         key = cv.waitKey(0)
-        if chr(key%256) == 'q':
+
+        if chr(key % 256) == 'q' or chr(key % 256) == 'Q':
             break
-        elif chr(key%256) == 'a':
+        elif chr(key % 256) == 'a' or chr(key % 256) == 'A':
             i -= 1
-        else:
-            i += 1
-        #cv.destroyAllWindows()
+
+    cv.destroyAllWindows()

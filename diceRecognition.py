@@ -47,7 +47,7 @@ def joinImages(scale, images, oneDimArr = True):
     return result
 
 def getContours(img, drawImg):
-    contours, hierarchy = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    contours, _ = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     dices = []
     positions = []
     imageForCropping = np.copy(drawImg)
@@ -59,17 +59,18 @@ def getContours(img, drawImg):
             rect = cv.minAreaRect(cnt)
             box = cv.boxPoints(rect)
             box = np.int0(box)
-            positions.append((box[0][0], box[0][1]))
-            cv.drawContours(drawImg, [box], 0, (0, 255, 0), 2)
 
             width = int(rect[1][0])
             height = int(rect[1][1])
 
-            sourcePoints = box.astype("float32")
-            targetPoints = np.array([[0, height - 1], [0, 0], [width - 1, 0], [width - 1, height - 1]], dtype="float32")
-            M = cv.getPerspectiveTransform(sourcePoints, targetPoints)
-            warped = cv.warpPerspective(imageForCropping, M, (width, height))
-            dices.append(warped)
+            if abs(width - height) <= 35:
+                positions.append((box[0][0], box[0][1]))
+                cv.drawContours(drawImg, [box], 0, (0, 255, 0), 2)
+                sourcePoints = box.astype("float32")
+                targetPoints = np.array([[0, height - 1], [0, 0], [width - 1, 0], [width - 1, height - 1]], dtype="float32")
+                M = cv.getPerspectiveTransform(sourcePoints, targetPoints)
+                warped = cv.warpPerspective(imageForCropping, M, (width, height))
+                dices.append(warped)    
 
     return dices, positions
             
@@ -104,7 +105,7 @@ def findContoursInDice(img):
     diceImgThreshold = cv.threshold(diceImgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
 
     diceImgCanny = cv.Canny(diceImgThreshold, 20, 255)
-    contours, hierarchy = cv.findContours(diceImgCanny, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    contours, _ = cv.findContours(diceImgCanny, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     return contours
     
 def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio):
@@ -124,32 +125,34 @@ def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCi
 
     keypoints = detector.detect(diceImgGray)
 
-    #invImage = cv.bitwise_not(diceImgGray)
-    #keypoints2 = detector.detect(invImage) + keypoints
     return cv.drawKeypoints(img, keypoints, np.array([]), (0, 0, 255),
                 cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), len(keypoints)
 
 def deleteGlares(img):
     pass
 
-
-#blob detection parameters
-minThreshold = 50                  
-maxThreshold = 200     
-minArea = 60                
-maxArea = 1000
-minCircularity = 0.4
-minInertiaRatio = 0.4
-
-totalPips = 0
-
 def recognize(fileName):
-    img = openImage(fileName)
+    #blob detection parameters
+    minThreshold = 50                  
+    maxThreshold = 200     
+    minArea = 60                
+    maxArea = 1000
+    minCircularity = 0.4
+    minInertiaRatio = 0.4
+
     totalPips = 0
+    img = openImage(fileName)
+
     imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     imgBlur = cv.GaussianBlur(imgGray, (3, 3), 10)
-
     imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
+    
+    #adaptiveTh = cv.adaptiveThreshold(imgGray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+            #cv.THRESH_BINARY, 11, 5)
+    #adaptiveTh = cv.bitwise_not(adaptiveTh)
+    #adaptiveTh = cv.morphologyEx(adaptiveTh, cv.MORPH_CLOSE, (7,7))
+    #adaptiveTh = cv.morphologyEx(adaptiveTh, cv.MORPH_OPEN, (7,7))
+    #cv.imshow("a", adaptiveTh)
 
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
     imgThreshold = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
@@ -159,47 +162,50 @@ def recognize(fileName):
     resultImage = np.copy(img)
 
     dices, positions = getContours(imgCanny, resultImage)
-
     cv.putText(resultImage, "Number of dices: " + str(len(dices)), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-    filteredDices = []
 
-    for i in range(len(dices)):
-        dices[i] = resizeToSize(dices[i], 128)
+    if len(dices) > 0:
+        filteredDices = []
+        
+        for i in range(len(dices)):
+            dices[i] = resizeToSize(dices[i], 128)
 
-    imgArea = dices[0].shape[0] * dices[0].shape[1]
-    maxArea = int(imgArea / 2)
+        imgArea = dices[0].shape[0] * dices[0].shape[1]
+        maxArea = int(imgArea / 2)
 
-    for i in range(len(dices)):
-        blur = cv.medianBlur(dices[i], 5)
-        hsv = cv.cvtColor(blur, cv.COLOR_BGR2HSV)
-        lowerGray = np.array([0, 5, 50], np.uint8)
-        upperGray = np.array([179, 50, 255], np.uint8)
-        maskGray = cv.inRange(hsv, lowerGray, upperGray)
-        mean = np.mean(maskGray)
+        for i in range(len(dices)):
+            blur = cv.medianBlur(dices[i], 5)
+            hsv = cv.cvtColor(blur, cv.COLOR_BGR2HSV)
+            lowerGray = np.array([0, 5, 50], np.uint8)
+            upperGray = np.array([179, 50, 255], np.uint8)
+            maskGray = cv.inRange(hsv, lowerGray, upperGray)
+            mean = np.mean(maskGray)
 
-        for j in range(maskGray.shape[0]):
-            for g in range(maskGray.shape[1]):
-                if(maskGray[j][g] >= 220 and mean <= 30):
-                    dices[i][j][g][0] = 0
-                    dices[i][j][g][1] = 0
-                    dices[i][j][g][2] = 0
+            for j in range(maskGray.shape[0]):
+                for g in range(maskGray.shape[1]):
+                    if(maskGray[j][g] >= 220 and mean <= 30):
+                        dices[i][j][g][0] = 0
+                        dices[i][j][g][1] = 0
+                        dices[i][j][g][2] = 0
 
-        imgWithKeypoints, number = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
-        cv.putText(imgWithKeypoints, str(number), (5, 25), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+            dices[i] = cv.morphologyEx(dices[i], cv.MORPH_CLOSE, kernel)
+            dices[i] = cv.morphologyEx(dices[i], cv.MORPH_OPEN, kernel)
 
-        cv.putText(resultImage, str(number), positions[i], cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-        filteredDices.append(imgWithKeypoints)
-        totalPips += number
+            imgWithKeypoints, number = simpleBlobDetection(dices[i], minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
+            cv.putText(imgWithKeypoints, str(number), (5, 25), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+
+            cv.putText(resultImage, str(number), positions[i], cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+            filteredDices.append(imgWithKeypoints)
+            totalPips += number
     
     print("File: " + fileName)
     print("Total pips found: " + str(totalPips))
     print("")
 
-    full = joinImages(0.8, [img, resultImage], True)
+    full = joinImages(0.6, [img, resultImage], True)
     #cv.imshow("images", joined)
 
     dices = joinImages(0.5, filteredDices, True)
     #cv.imshow("pits", joined)
+
     return full, dices
-
-
