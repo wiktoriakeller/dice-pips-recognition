@@ -2,6 +2,8 @@ import diceRecognition
 import os
 import cv2 as cv
 
+computed = {}
+
 def getFiles(path, ext=['.jpg', '.png', '.jpeg']):
     files = []
     for f in os.listdir(path):
@@ -14,8 +16,13 @@ if __name__ == "__main__":
 
     i = 0
     while True:
-        full, dices = diceRecognition.recognize(files[i])
-        cv.imshow(files[i], full)
+        if i in computed:
+            full, dices = computed[i]
+        else:
+            full, dices = diceRecognition.recognize(files[i])
+            computed[i] = (full, dices)
+
+        cv.imshow("dice", full)
         cv.imshow("pits", dices)
         key = cv.waitKey(0)
         if chr(key%256) == 'q':
@@ -24,4 +31,4 @@ if __name__ == "__main__":
             i -= 1
         else:
             i += 1
-        cv.destroyAllWindows()
+        #cv.destroyAllWindows()
