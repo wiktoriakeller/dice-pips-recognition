@@ -17,7 +17,8 @@ def resize(sample, image, scale):
     else:
         image = cv.resize(image, (sample.shape[1], sample.shape[0]), None, scale, scale)
 
-    #check whether image is in grayscale, BGR image will have length of the shape equal to 3
+    #check whether image is in grayscale, BGR image
+    #will have length of the shape equal to 3
     if len(image.shape) == 2:
         image = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
     
@@ -71,12 +72,9 @@ def getContours(img, drawImg):
                 targetPoints = np.array([[0, height - 1], [0, 0], [width - 1, 0], [width - 1, height - 1]], dtype="float32")
                 M = cv.getPerspectiveTransform(sourcePoints, targetPoints)
                 warped = cv.warpPerspective(imageForCropping, M, (width, height))
-                dices.append(warped)    
+                dices.append(warped)
 
     return dices, positions
-            
-def empty(arg):
-    pass
 
 def openImage(file):
     path = os.path.dirname(__file__) + "\\resources\\dices"
@@ -98,16 +96,6 @@ def openImage(file):
         exit(1)
 
     return img
-
-def findContoursInDice(img):
-    diceImgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-    diceImgBlur = cv.GaussianBlur(diceImgGray, (3, 3), 50, 50)
-    diceImgThreshold = cv.threshold(diceImgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
-
-    diceImgCanny = cv.Canny(diceImgThreshold, 20, 255)
-    contours, _ = cv.findContours(diceImgCanny, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-    return contours
     
 def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio):
     diceImgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -139,7 +127,7 @@ def processImage(img, gamma, kernel):
     imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     imgGammaApplied = applyGamma(imgGray, gamma)
 
-    imgBlur = cv.GaussianBlur(imgGammaApplied, (3, 3), 10)
+    imgBlur = cv.GaussianBlur(imgGammaApplied, (3, 3), 8)
     imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
 
     imgMorph = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
@@ -158,6 +146,8 @@ def recognize(fileName):
     minCircularity = 0.4
     minInertiaRatio = 0.4
 
+    recognitionResult = open(os.path.dirname(__file__) + "\\results\\simpleRecognition\\" + fileName + ".txt", "w")
+
     totalPips = 0
     totalDices = 0
 
@@ -175,7 +165,7 @@ def recognize(fileName):
         dices, positions = getContours(output, resultImage)
         totalDices = len(dices)
 
-    cv.putText(resultImage, "Number of dices: " + str(totalDices), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+    cv.putText(resultImage, "Number of dices: " + str(totalDices), (30, 50), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
     filteredDices = []
 
     if totalDices > 0:
@@ -202,13 +192,17 @@ def recognize(fileName):
 
             filteredDices.append(imgWithKeypoints)
             totalPips += number
+            recognitionResult.write("Dice " + str(i) + " pips: " + str(number) + "\n")
 
         print("File: " + fileName)
-        print("Total dices found: " + str(totalPips))
+        print("Total dices found: " + str(totalDices))
         print("Total pips found: " + str(totalPips))
         print()
 
-        full = joinImages(0.4, [img, resultImage], True)
+        recognitionResult.write("Total dices: " + str(totalDices) + "\n")
+        recognitionResult.write("Total pips: " + str(totalPips) + "\n")
+
+        full = joinImages(0.6, [img, resultImage], True)
         dices = joinImages(0.5, filteredDices, True)
 
         return full, dices
@@ -217,5 +211,8 @@ def recognize(fileName):
     print("Total dices found: " + "0")
     print("Total pips found: " + "0", end="/n/n")
     print()
+
+    recognitionResult.write("Total dices: 0" + "\n")
+    recognitionResult.write("Total pips: 0" + "\n\n")
     
     return resultImage, resultImage

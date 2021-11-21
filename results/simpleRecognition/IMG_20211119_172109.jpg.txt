@@ -1,0 +1,9 @@
+Dice 0 pips: 2
+Dice 1 pips: 1
+Dice 2 pips: 4
+Dice 3 pips: 1
+Dice 4 pips: 2
+Dice 5 pips: 3
+Dice 6 pips: 1
+Total dices: 7
+Total pips: 14
