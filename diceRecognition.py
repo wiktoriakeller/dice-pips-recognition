@@ -195,15 +195,17 @@ def recognize(fileName, img=None):
             filteredDices.append(imgWithKeypoints)
             totalPips += number
 
+    if totalPips > 0:
         cv.putText(img, "Filename: " + fileName, (30, 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
         full = joinImages(0.6, [img, resultImage], True)
         dices = joinImages(0.5, filteredDices, True)
-
         return full, dices
-    
-    blankDice = np.zeros((128, 128, 3))
-    full = joinImages(0.6, [img, img], True)
-    dices = joinImages(0.5, [blankDice, blankDice], True)
-
-    return full, dices
+    else:
+        copy = np.copy(img)
+        cv.putText(img, "Filename: " + fileName, (30, 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+        cv.putText(copy, "Number of dices: 0", (30, 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+        blankDice = np.zeros((128, 128, 3))
+        full = joinImages(0.6, [img, copy], True)
+        dices = joinImages(0.5, [blankDice, blankDice], True)
+        return full, dices
     

@@ -14,9 +14,8 @@ def getFiles(path, ext=['.jpg', '.png', '.jpeg'] + video):
 
 if __name__ == "__main__":
     files = getFiles(os.path.dirname(__file__) + "\\resources\\dices")
-
-    print(files)
     i = 0
+    
     while True: 
         if os.path.splitext(files[i])[1] in video:
             cap = cv.VideoCapture(os.path.dirname(__file__) + "\\resources\\dices\\" + files[i])
