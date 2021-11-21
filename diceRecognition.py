@@ -138,7 +138,7 @@ def processImage(img, gamma, kernel, method):
 
     return dilated
 
-def recognize(fileName):
+def recognize(fileName, img=None):
     #blob detection parameters
     minThreshold = 50                  
     maxThreshold = 200     
@@ -150,7 +150,9 @@ def recognize(fileName):
     totalPips = 0
     totalDices = 0
 
-    img = openImage(fileName)
+    if img is None:
+        img = openImage(fileName)
+        
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
     output = processImage(img, 0.5, kernel, cv.THRESH_BINARY | cv.THRESH_OTSU)
 
