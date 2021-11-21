@@ -1,4 +1,5 @@
 from functools import total_ordering
+from typing import Tuple
 import cv2 as cv
 import numpy as np
 import os 
@@ -55,7 +56,7 @@ def getContours(img, drawImg):
     for cnt in contours:
         area = cv.contourArea(cnt)
 
-        if area > 1000:
+        if area >= 1000:
             rect = cv.minAreaRect(cnt)
             box = cv.boxPoints(rect)
             box = np.int0(box)
@@ -128,14 +129,25 @@ def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCi
     return cv.drawKeypoints(img, keypoints, np.array([]), (0, 0, 255),
             cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), len(keypoints)
 
-def deleteGlares(img):
-    pass
-
-def gamma(img, gamma):
+def applyGamma(img, gamma):
    invGamma = 1.0 / gamma
    table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
 
-   return cv.LUT(img, table)
+   return cv.LUT(img, table) 
+
+def processImage(img, gamma, kernel):
+    imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    imgGammaApplied = applyGamma(imgGray, gamma)
+
+    imgBlur = cv.GaussianBlur(imgGammaApplied, (3, 3), 10)
+    imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
+
+    imgMorph = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
+    imgMorph = cv.morphologyEx(imgMorph, cv.MORPH_OPEN, kernel)
+    
+    imgCanny = cv.Canny(imgMorph, 1, 255)
+
+    return imgCanny
 
 def recognize(fileName):
     #blob detection parameters
@@ -150,22 +162,18 @@ def recognize(fileName):
     totalDices = 0
 
     img = openImage(fileName)
-
-    imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    imgGammaApplied = gamma(imgGray, gamma=0.5)
-
-    imgBlur = cv.GaussianBlur(imgGammaApplied, (3, 3), 10)
-    imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
-
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-    imgMorph = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
-    imgMorph = cv.morphologyEx(imgMorph, cv.MORPH_OPEN, kernel)
+    output = processImage(img, 0.5, kernel)
 
-    imgCanny = cv.Canny(imgMorph, 1, 255)
     resultImage = np.copy(img)
-
-    dices, positions = getContours(imgCanny, resultImage)
+    dices, positions = getContours(output, resultImage)
     totalDices = len(dices)
+
+    if totalDices == 0:
+        output = processImage(img, 0.2, kernel)
+        resultImage = np.copy(img)
+        dices, positions = getContours(output, resultImage)
+        totalDices = len(dices)
 
     cv.putText(resultImage, "Number of dices: " + str(totalDices), (50, 100), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
     filteredDices = []
@@ -184,7 +192,7 @@ def recognize(fileName):
             imgWithKeypoints, number = simpleBlobDetection(diceMorph, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
 
             if number == 0:
-                diceGamma = gamma(dices[i], 0.28)
+                diceGamma = applyGamma(dices[i], 0.28)
                 diceMorph = cv.morphologyEx(diceGamma, cv.MORPH_CLOSE, kernel)
                 diceMorph = cv.morphologyEx(diceMorph, cv.MORPH_OPEN, kernel)
                 imgWithKeypoints, number = simpleBlobDetection(diceMorph, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
@@ -195,13 +203,12 @@ def recognize(fileName):
             filteredDices.append(imgWithKeypoints)
             totalPips += number
 
-
         print("File: " + fileName)
         print("Total dices found: " + str(totalPips))
         print("Total pips found: " + str(totalPips))
         print()
 
-        full = joinImages(0.4, [[img, imgGray, imgGammaApplied], [imgMorph, imgThreshold, resultImage]], False)
+        full = joinImages(0.4, [img, resultImage], True)
         dices = joinImages(0.5, filteredDices, True)
 
         return full, dices
