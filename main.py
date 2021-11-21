@@ -15,7 +15,7 @@ if __name__ == "__main__":
     files = getFiles(os.path.dirname(__file__) + "\\resources\\dices")
 
     i = 0
-    while True:
+    while True: 
         if i in computed:
             full, dices = computed[i]
         else:
@@ -28,7 +28,10 @@ if __name__ == "__main__":
 
         if chr(key % 256) == 'q' or chr(key % 256) == 'Q':
             break
+        elif chr(key % 256) == 'd' or chr(key % 256) == 'D':
+            i = (i + 1) % len(files)
         elif chr(key % 256) == 'a' or chr(key % 256) == 'A':
-            i -= 1
+            i = (i - 1) % len(files)
 
     cv.destroyAllWindows()
+    
