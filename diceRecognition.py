@@ -57,7 +57,7 @@ def getContours(img, drawImg):
     for cnt in contours:
         area = cv.contourArea(cnt)
 
-        if area >= 1000:
+        if area >= 1200:
             rect = cv.minAreaRect(cnt)
             box = cv.boxPoints(rect)
             box = np.int0(box)
@@ -111,10 +111,10 @@ def simpleBlobDetection(img, minThreshold, maxThreshold, minArea, maxArea, minCi
     params.minCircularity = minCircularity
     params.minInertiaRatio = minInertiaRatio
     detector = cv.SimpleBlobDetector_create(params)
-
+    
     keypoints = detector.detect(diceImgGray)
 
-    return cv.drawKeypoints(img, keypoints, np.array([]), (0, 0, 255),
+    return cv.drawKeypoints(img, keypoints, np.array([]), (0, 255, 0),
             cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), len(keypoints)
 
 def applyGamma(img, gamma):
@@ -123,19 +123,20 @@ def applyGamma(img, gamma):
 
    return cv.LUT(img, table) 
 
-def processImage(img, gamma, kernel):
+def processImage(img, gamma, kernel, method):
     imgGray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     imgGammaApplied = applyGamma(imgGray, gamma)
 
     imgBlur = cv.GaussianBlur(imgGammaApplied, (3, 3), 8)
-    imgThreshold = cv.threshold(imgBlur, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)[1]
+    imgThreshold = cv.threshold(imgBlur, 0, 255, method)[1]
 
     imgMorph = cv.morphologyEx(imgThreshold, cv.MORPH_CLOSE, kernel)
     imgMorph = cv.morphologyEx(imgMorph, cv.MORPH_OPEN, kernel)
     
     imgCanny = cv.Canny(imgMorph, 1, 255)
+    dilated = cv.dilate(imgCanny, (3, 3), iterations=2)
 
-    return imgCanny
+    return dilated
 
 def recognize(fileName):
     #blob detection parameters
@@ -146,26 +147,24 @@ def recognize(fileName):
     minCircularity = 0.4
     minInertiaRatio = 0.4
 
-    recognitionResult = open(os.path.dirname(__file__) + "\\results\\simpleRecognition\\" + fileName + ".txt", "w")
-
     totalPips = 0
     totalDices = 0
 
     img = openImage(fileName)
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-    output = processImage(img, 0.5, kernel)
+    output = processImage(img, 0.5, kernel, cv.THRESH_BINARY | cv.THRESH_OTSU)
 
     resultImage = np.copy(img)
     dices, positions = getContours(output, resultImage)
     totalDices = len(dices)
 
-    if totalDices == 0:
-        output = processImage(img, 0.2, kernel)
+    if totalDices == 0 or totalDices == 1:
+        output = processImage(img, 0.2, kernel, cv.THRESH_TRIANGLE)
         resultImage = np.copy(img)
         dices, positions = getContours(output, resultImage)
         totalDices = len(dices)
 
-    cv.putText(resultImage, "Number of dices: " + str(totalDices), (30, 50), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+    cv.putText(resultImage, "Number of dices: " + str(totalDices), (30, 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
     filteredDices = []
 
     if totalDices > 0:
@@ -176,13 +175,14 @@ def recognize(fileName):
         maxArea = int(imgArea / 2)
 
         for i in range(len(dices)):
+            diceGamma = applyGamma(dices[i], 0.65)
             diceMorph = cv.morphologyEx(dices[i], cv.MORPH_CLOSE, kernel)
             diceMorph = cv.morphologyEx(diceMorph, cv.MORPH_OPEN, kernel)
 
             imgWithKeypoints, number = simpleBlobDetection(diceMorph, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
 
             if number == 0:
-                diceGamma = applyGamma(dices[i], 0.28)
+                diceGamma = applyGamma(dices[i], 0.24)
                 diceMorph = cv.morphologyEx(diceGamma, cv.MORPH_CLOSE, kernel)
                 diceMorph = cv.morphologyEx(diceMorph, cv.MORPH_OPEN, kernel)
                 imgWithKeypoints, number = simpleBlobDetection(diceMorph, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
@@ -192,27 +192,16 @@ def recognize(fileName):
 
             filteredDices.append(imgWithKeypoints)
             totalPips += number
-            recognitionResult.write("Dice " + str(i) + " pips: " + str(number) + "\n")
 
-        print("File: " + fileName)
-        print("Total dices found: " + str(totalDices))
-        print("Total pips found: " + str(totalPips))
-        print()
-
-        recognitionResult.write("Total dices: " + str(totalDices) + "\n")
-        recognitionResult.write("Total pips: " + str(totalPips) + "\n")
-
+        cv.putText(img, "Filename: " + fileName, (30, 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
         full = joinImages(0.6, [img, resultImage], True)
         dices = joinImages(0.5, filteredDices, True)
 
         return full, dices
-
-    print("File: " + fileName)
-    print("Total dices found: " + "0")
-    print("Total pips found: " + "0", end="/n/n")
-    print()
-
-    recognitionResult.write("Total dices: 0" + "\n")
-    recognitionResult.write("Total pips: 0" + "\n\n")
     
-    return resultImage, resultImage
+    blankDice = np.zeros((128, 128))
+    full = joinImages(0.6, [img, img], True)
+    dices = joinImages(0.5, [blankDice, blankDice], True)
+
+    return full, dices
+    
