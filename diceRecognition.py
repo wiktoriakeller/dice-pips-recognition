@@ -137,7 +137,7 @@ def processImage(img, gamma, kernel):
 
     return imgCanny
 
-def recognize(fileName):
+def recognize(fileName, img=None):
     #blob detection parameters
     minThreshold = 50                  
     maxThreshold = 200     
@@ -146,12 +146,12 @@ def recognize(fileName):
     minCircularity = 0.4
     minInertiaRatio = 0.4
 
-    recognitionResult = open(os.path.dirname(__file__) + "\\results\\simpleRecognition\\" + fileName + ".txt", "w")
+    #recognitionResult = open(os.path.dirname(__file__) + "\\results\\simpleRecognition\\" + fileName + ".txt", "w")
 
     totalPips = 0
     totalDices = 0
-
-    img = openImage(fileName)
+    if img is None:
+        img = openImage(fileName)
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
     output = processImage(img, 0.5, kernel)
 
@@ -192,27 +192,27 @@ def recognize(fileName):
 
             filteredDices.append(imgWithKeypoints)
             totalPips += number
-            recognitionResult.write("Dice " + str(i) + " pips: " + str(number) + "\n")
+            #recognitionResult.write("Dice " + str(i) + " pips: " + str(number) + "\n")
 
-        print("File: " + fileName)
-        print("Total dices found: " + str(totalDices))
-        print("Total pips found: " + str(totalPips))
-        print()
+        #print("File: " + fileName)
+        #print("Total dices found: " + str(totalDices))
+        #print("Total pips found: " + str(totalPips))
+        #print()
 
-        recognitionResult.write("Total dices: " + str(totalDices) + "\n")
-        recognitionResult.write("Total pips: " + str(totalPips) + "\n")
+        #recognitionResult.write("Total dices: " + str(totalDices) + "\n")
+        #recognitionResult.write("Total pips: " + str(totalPips) + "\n")
 
         full = joinImages(0.6, [img, resultImage], True)
         dices = joinImages(0.5, filteredDices, True)
 
         return full, dices
 
-    print("File: " + fileName)
-    print("Total dices found: " + "0")
-    print("Total pips found: " + "0", end="/n/n")
-    print()
+    #print("File: " + fileName)
+    #print("Total dices found: " + "0")
+    #print("Total pips found: " + "0", end="/n/n")
+   # print()
 
-    recognitionResult.write("Total dices: 0" + "\n")
-    recognitionResult.write("Total pips: 0" + "\n\n")
+    #recognitionResult.write("Total dices: 0" + "\n")
+    #recognitionResult.write("Total pips: 0" + "\n\n")
     
     return resultImage, resultImage

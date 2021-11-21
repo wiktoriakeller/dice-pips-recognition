@@ -3,8 +3,10 @@ import os
 import cv2 as cv
 
 computed = {}
+video = ['.mp4']
 
-def getFiles(path, ext=['.jpg', '.png', '.jpeg']):
+
+def getFiles(path, ext=['.jpg', '.png', '.jpeg'] + video):
     files = []
     for f in os.listdir(path):
         if(os.path.isfile(os.path.join(path, f)) and os.path.splitext(f)[1] in ext):
@@ -14,8 +16,29 @@ def getFiles(path, ext=['.jpg', '.png', '.jpeg']):
 if __name__ == "__main__":
     files = getFiles(os.path.dirname(__file__) + "\\resources\\dices")
 
+    print(files)
     i = 0
     while True: 
+        if os.path.splitext(files[i])[1] in video:
+            cap = cv.VideoCapture(os.path.dirname(__file__) + "\\resources\\dices\\" + files[i])
+            #skip if cant open video
+            if cap.isOpened() == False:
+                i += 1
+            
+            while(cap.isOpened()):
+                ret, frame = cap.read()
+                if ret == True:
+                    full, dices = diceRecognition.recognize("" ,img=frame)
+                    cv.imshow("dice",full)
+                    cv.imshow("pits", dices)
+                    if cv.waitKey(25) & 0xFF == ord('q'):
+                        break
+                else: 
+                    break
+            cap.release()
+            i += 1
+            #continue
+                   
         if i in computed:
             full, dices = computed[i]
         else:
@@ -34,4 +57,4 @@ if __name__ == "__main__":
             i = (i - 1) % len(files)
 
     cv.destroyAllWindows()
-    
+
