@@ -28,7 +28,7 @@ if __name__ == "__main__":
             while(cap.isOpened()):
                 ret, frame = cap.read()
                 if ret == True:
-                    full, dices = diceRecognition.recognize("" ,img=frame)
+                    full, dices = diceRecognition.recognize(files[i], img=frame)
                     cv.imshow("dice",full)
                     cv.imshow("pits", dices)
                     if cv.waitKey(25) & 0xFF == ord('q'):
@@ -57,4 +57,3 @@ if __name__ == "__main__":
             i = (i - 1) % len(files)
 
     cv.destroyAllWindows()
-

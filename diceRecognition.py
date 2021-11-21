@@ -201,7 +201,7 @@ def recognize(fileName, img=None):
 
         return full, dices
     
-    blankDice = np.zeros((128, 128))
+    blankDice = np.zeros((128, 128, 3))
     full = joinImages(0.6, [img, img], True)
     dices = joinImages(0.5, [blankDice, blankDice], True)
 
