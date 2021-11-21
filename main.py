@@ -5,7 +5,6 @@ import cv2 as cv
 computed = {}
 video = ['.mp4']
 
-
 def getFiles(path, ext=['.jpg', '.png', '.jpeg'] + video):
     files = []
     for f in os.listdir(path):
@@ -35,9 +34,9 @@ if __name__ == "__main__":
                         break
                 else: 
                     break
+
             cap.release()
             i += 1
-            #continue
                    
         if i in computed:
             full, dices = computed[i]
