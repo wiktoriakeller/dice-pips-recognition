@@ -205,14 +205,14 @@ def recognize(fileName, img=None):
         maxArea = int(imgArea / 2)
 
         for i in range(len(dices)):
-            diceGamma = applyGamma(dices[i], 0.65)
+            diceGamma = applyGamma(dices[i], 0.6)
             diceMorph = cv.morphologyEx(dices[i], cv.MORPH_CLOSE, kernel)
             diceMorph = cv.morphologyEx(diceMorph, cv.MORPH_OPEN, kernel)
 
             imgWithKeypoints, number = simpleBlobDetection(diceMorph, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
 
             if number == 0:
-                diceGamma = applyGamma(dices[i], 0.24)
+                diceGamma = applyGamma(dices[i], 0.18)
                 diceMorph = cv.morphologyEx(diceGamma, cv.MORPH_CLOSE, kernel)
                 diceMorph = cv.morphologyEx(diceMorph, cv.MORPH_OPEN, kernel)
                 imgWithKeypoints, number = simpleBlobDetection(diceMorph, minThreshold, maxThreshold, minArea, maxArea, minCircularity, minInertiaRatio)
