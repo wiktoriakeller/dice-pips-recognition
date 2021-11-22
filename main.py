@@ -29,7 +29,7 @@ if __name__ == "__main__":
                     full, dices = diceRecognition.recognize(files[i], img=frame)
                     cv.imshow("dice",full)
                     cv.imshow("pits", dices)
-                    if cv.waitKey(25) & 0xFF == ord('q'):
+                    if cv.waitKey(5) & 0xFF == ord('q'):
                         break
                 else: 
                     break

@@ -48,6 +48,34 @@ def joinImages(scale, images, oneDimArr = True):
 
     return result
 
+def makeRows(images, divider):
+    if len(images) > 0:
+        rows = int(len(images) / divider)
+        if rows % divider != 0:
+            rows += 1
+
+        blank = np.zeros_like(images[0])
+        newImages = []
+        for i in range(rows):
+            newImages.append([])
+            for j in range(divider):
+                newImages[i].append(blank)
+
+        row = 0
+        col = 0
+        for i in range(len(images)):
+            if row < rows:
+                newImages[row][col] = images[i]
+                if col == (divider - 1):
+                    col = 0
+                    row += 1
+                else:
+                    col += 1
+
+        return newImages
+    else:
+        return images
+
 def getContours(img, drawImg):
     contours, _ = cv.findContours(img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     dices = []
@@ -198,7 +226,13 @@ def recognize(fileName, img=None):
     if totalPips > 0:
         cv.putText(img, "Filename: " + fileName, (30, 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
         full = joinImages(0.6, [img, resultImage], True)
-        dices = joinImages(0.5, filteredDices, True)
+
+        if len(filteredDices) > 10:
+            filteredDices = makeRows(filteredDices, 10) 
+            dices = joinImages(0.5, filteredDices, False)
+        else:
+            dices = joinImages(0.5, filteredDices, True)
+        
         return full, dices
     else:
         copy = np.copy(img)
