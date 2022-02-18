@@ -12,4 +12,7 @@ Command to run the program:
 python main.py
 ```
 
-##Results
+## Results
+<img src="https://github.com/wiktoriakeller/dice-pips-recognition/blob/main/images/dicesInMotion.gif" width="800" />
+<img src="https://github.com/wiktoriakeller/dice-pips-recognition/blob/main/images/dices1.png" width="800" />
+<img src="https://github.com/wiktoriakeller/dice-pips-recognition/blob/main/images/dices2.png" width="800" />
